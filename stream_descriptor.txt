@@ -1,0 +1,35 @@
+#include <boost/asio.hpp>
+#include <iostream>
+
+int main()
+{
+    boost::asio::io_service ioservice;
+    boost::asio::posix::stream_descriptor in(ioservice, STDIN_FILENO);
+    char buf[10];
+
+    struct termios term_old;
+    tcgetattr(STDIN_FILENO, &term_old);
+    struct termios newt = term_old;
+
+    newt.c_lflag &= ~(ICANON); // don't wait until EOL
+    newt.c_lflag &= ~(ECHO);   // don't echo
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+    std::function<void(boost::system::error_code, size_t)> read_handler
+        = [&](boost::system::error_code ec, size_t len) {
+              if (ec) {
+                  std::cerr << "exit: " << ec.message() << std::endl;
+              } else {
+                  buf[len] = '\0';
+                  std::cout << "in: " << buf << std::endl;
+                  in.async_read_some(boost::asio::buffer(buf), read_handler);
+              }
+          };
+
+    in.async_read_some(boost::asio::buffer(buf), read_handler);
+
+    ioservice.run();
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &term_old);
+}
