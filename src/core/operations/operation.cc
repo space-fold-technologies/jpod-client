@@ -7,9 +7,9 @@
 
 namespace core::operations
 {
-    operation::operation(operation_listener &listener) : context(),
-                                                         signals(context, SIGINT, SIGTERM),
-                                                         connection(std::make_unique<core::connections::connection>(context, *this)),
+    operation::operation(operation_listener &listener) : _context(),
+                                                         signals(_context, SIGINT, SIGTERM),
+                                                         connection(std::make_unique<core::connections::connection>(_context, *this)),
                                                          running(false),
                                                          operation_thread(&operation::run, this),
                                                          listener(listener),
@@ -53,7 +53,7 @@ namespace core::operations
             running = true;
             while (running)
             {
-                context.run();
+                _context.run();
             }
         }
     }
@@ -71,7 +71,7 @@ namespace core::operations
     {
         listener.on_operation_complete({}, "");
         running = false;
-        context.stop();
+        _context.stop();
     }
     void operation::on_message_received(const std::vector<uint8_t> &payload)
     {
@@ -110,6 +110,10 @@ namespace core::operations
     void operation::on_connection_error(const std::error_code &error)
     {
         listener.on_operation_complete(error, "network connection failed");
+    }
+    asio::io_context &operation::context()
+    {
+        return _context;
     }
     operation::~operation()
     {

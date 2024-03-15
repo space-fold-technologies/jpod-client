@@ -4,6 +4,8 @@
 #include <domain/containers/stop_command.h>
 #include <domain/containers/list_command.h>
 #include <domain/containers/remove_command.h>
+#include <domain/containers/shell_command.h>
+#include <domain/containers/log_command.h>
 #include <lyra/lyra.hpp>
 #include <spdlog/spdlog.h>
 
@@ -34,6 +36,8 @@ namespace domain::containers
          add_subcommands(std::make_shared<stop_command>());
          add_subcommands(std::make_shared<list_command>());
          add_subcommands(std::make_shared<remove_command>());
+         add_subcommands(std::make_shared<shell_command>());
+         add_subcommands(std::make_shared<log_command>());
     }
     container_command::~container_command()
     {
