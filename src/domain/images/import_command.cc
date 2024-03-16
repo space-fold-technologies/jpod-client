@@ -62,9 +62,9 @@ namespace domain::images
     }
     void import_command::on_operation_complete(const std::error_code &error, const std::string &details)
     {
+         operation->shutdown();
         if (error)
         {
-            operation->shutdown();
             fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "\nimport error: {}!\n", details);
         }
     }

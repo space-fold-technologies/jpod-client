@@ -22,7 +22,7 @@ namespace core::operations
         signals.async_wait(
             [this](const std::error_code &error, int signal_code)
             {
-                if (running && signal_code == SIGTERM)
+                if (signal_code == SIGTERM)
                 {
                     running = false;
                 }
@@ -60,6 +60,7 @@ namespace core::operations
 
     void operation::shutdown()
     {
+        running = false;
         connection->disconnect();
     }
 
