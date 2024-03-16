@@ -77,7 +77,7 @@ namespace domain::containers
     void shell_command::on_operation_success(const std::string &payload)
     {
         fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", payload);
-        // terminal started in the daemon
+        //terminal started in the daemon
         if (terminal)
         {
             terminal->start_io();
