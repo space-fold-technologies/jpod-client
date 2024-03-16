@@ -77,9 +77,16 @@ namespace domain::containers
     void shell_command::on_operation_success(const std::string &payload)
     {
         fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", payload);
-        //terminal started in the daemon
-        if (terminal)
+        // terminal started in the daemon
+
+        if (payload.find("initialized!") != std::string::npos && terminal)
         {
+            auto details = terminal->details();
+            std::string payload = fmt::format("{}:{}", details.columns, details.rows);
+            std::vector<uint8_t> data(payload.begin(), payload.end());
+            container_shell_order order{shell_order_type::terminal_size, data};
+            auto content = pack_container_shell_order(order);
+            operation->write_order(operation_target::container, request_operation::shell, content);
             terminal->start_io();
         }
     }
