@@ -42,7 +42,7 @@ namespace domain::containers
     // callbacks
     void list_command::on_operation_started()
     {
-        container_list_order order{filter::all, query};
+        container_list_order order{filter_mode::all, query};
         auto content = pack_container_list_order(order);
         operation->write_order(operation_target::container, request_operation::list, content);
     }

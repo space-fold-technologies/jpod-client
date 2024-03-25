@@ -40,12 +40,12 @@ namespace core::operations
         void on_connection_close() override;
         void on_message_received(const std::vector<uint8_t> &payload) override;
         void on_connection_error(const std::error_code &error) override;
-
+        asio::io_context& context();
     private:
         void run();
 
     private:
-        asio::io_context context;
+        asio::io_context _context;
         asio::signal_set signals;
         std::unique_ptr<core::connections::connection> connection;
         bool running;

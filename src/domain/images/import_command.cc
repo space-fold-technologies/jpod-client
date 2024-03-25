@@ -62,10 +62,10 @@ namespace domain::images
     }
     void import_command::on_operation_complete(const std::error_code &error, const std::string &details)
     {
+         operation->shutdown();
         if (error)
         {
-            operation->shutdown();
-            fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "import error: {}!\n", details);
+            fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "\nimport error: {}!\n", details);
         }
     }
     void import_command::on_operation_success(const std::string &payload)
@@ -76,6 +76,8 @@ namespace domain::images
     }
     void import_command::on_progress_update(const std::string &operation, const std::vector<uint8_t> &content)
     {
+        auto progress = unpack_progress_frame(content);
+        fmt::print(fg(fmt::color::steel_blue) | fmt::emphasis::italic, "\r{}:{}", progress.percentage, progress.feed);
     }
     import_command::~import_command()
     {

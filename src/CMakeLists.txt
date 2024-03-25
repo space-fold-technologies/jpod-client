@@ -31,6 +31,9 @@ add_executable(client
                 domain/containers/stop_command.cc
                 domain/containers/list_command.cc
                 domain/containers/remove_command.cc
+                domain/containers/log_command.cc
+                domain/containers/shell_command.cc
+                domain/containers/shell/terminal.cc
                 )
 
 target_link_libraries(client

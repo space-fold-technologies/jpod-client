@@ -27,3 +27,5 @@ int main () {
   resetCanonicalMode (); // switch back to canonical mode
   return 0;
 }
+
+https://vovkos.github.io/doxyrest/samples/libssh/page_libssh_tutor_shell.html

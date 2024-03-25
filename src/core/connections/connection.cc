@@ -45,7 +45,7 @@ namespace core::connections
                 {
                     if (bytes_transferred > 0)
                     {
-                        logger->info("wrote : {}", bytes_transferred);
+                        logger->debug("wrote : {}", bytes_transferred);
                     }
                 }
                 else
