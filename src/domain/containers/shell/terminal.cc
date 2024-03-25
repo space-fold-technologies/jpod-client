@@ -1,6 +1,7 @@
 #include <domain/containers/shell/terminal.h>
 #include <domain/containers/shell/terminal_listener.h>
 #include <asio/read_until.hpp>
+#include <asio/read.hpp>
 #include <asio/write.hpp>
 #include <asio/post.hpp>
 #include <sys/ioctl.h>
@@ -28,12 +29,12 @@ namespace domain::containers::shells
         if (::tcgetattr(file_descriptor, &previous_attributes) == 0)
         {
             termios current_attributes = previous_attributes;
-            current_attributes.c_lflag &= ~ (ICANON | ECHO);
-            // current_attributes.c_iflag &= tcflag_t(~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON));
-            // current_attributes.c_oflag &= tcflag_t(~(OPOST));
-            // current_attributes.c_lflag &= tcflag_t(~(ECHO | ECHONL | ICANON | ISIG | IEXTEN));
-            // current_attributes.c_cflag &= tcflag_t(~(CSIZE | PARENB));
-            // current_attributes.c_cflag |= tcflag_t(~(CS8));
+            // current_attributes.c_lflag &= ~ (ICANON | ECHO);
+            current_attributes.c_iflag &= tcflag_t(~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON));
+            current_attributes.c_oflag &= tcflag_t(~(OPOST));
+            current_attributes.c_lflag &= tcflag_t(~(ECHO | ECHONL | ICANON | ISIG | IEXTEN));
+            current_attributes.c_cflag &= tcflag_t(~(CSIZE | PARENB));
+            current_attributes.c_cflag |= tcflag_t(~(CS8));
             // current_attributes.c_cc[VMIN] = 1;
             // current_attributes.c_cc[VTIME] = 0;
             if (::tcsetattr(file_descriptor, TCSANOW, &current_attributes) == 0)
@@ -86,19 +87,17 @@ namespace domain::containers::shells
     }
     void terminal::read_user_input()
     {
-        asio::async_read_until(
+        asio::async_read(
             in,
-            input_buffer,
-            "\n",
+            asio::buffer(input_buffer),
             [this](const std::error_code &err, std::size_t bytes_transferred)
             {
                 if (!err)
                 {
-                    std::istream stream(&this->input_buffer);
-                    std::vector<uint8_t> content(bytes_transferred);
-                    stream.read((char *)&content[0], bytes_transferred);
-                    this->listener.on_input_received(content);
-                    this->input_buffer.consume(bytes_transferred);
+                    if (bytes_transferred == 1)
+                    {
+                        this->listener.on_input_received(std::vector<uint8_t>{input_buffer[0]});
+                    }
                     this->read_user_input();
                 }
                 else
@@ -106,6 +105,26 @@ namespace domain::containers::shells
                     this->listener.on_terminal_error(err);
                 }
             });
+        // asio::async_read_until(
+        //     in,
+        //     input_buffer,
+        //     "\n",
+        //     [this](const std::error_code &err, std::size_t bytes_transferred)
+        //     {
+        //         if (!err)
+        //         {
+        //             std::istream stream(&this->input_buffer);
+        //             std::vector<uint8_t> content(bytes_transferred);
+        //             stream.read((char *)&content[0], bytes_transferred);
+        //             this->listener.on_input_received(content);
+        //             this->input_buffer.consume(bytes_transferred);
+        //             this->read_user_input();
+        //         }
+        //         else
+        //         {
+        //             this->listener.on_terminal_error(err);
+        //         }
+        //     });
     }
     void terminal::wait_to_read()
     {
@@ -115,7 +134,6 @@ namespace domain::containers::shells
             {
                 if (!err)
                 {
-                    this->logger->info("ready to read input");
                     this->read_user_input();
                 }
                 else

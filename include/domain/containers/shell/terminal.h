@@ -53,7 +53,8 @@ namespace domain::containers::shells
         asio::posix::stream_descriptor out;
         termios previous_attributes;                                                                         
         bool restored;
-        asio::streambuf input_buffer;
+        //asio::streambuf input_buffer;
+        uint8_t input_buffer[1];
         std::shared_ptr<spdlog::logger> logger;
     };
 }

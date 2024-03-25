@@ -80,7 +80,7 @@ namespace domain::containers
 
         if (payload.find("initialized") != std::string::npos && terminal)
         {
-            fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", payload);
+            //fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", payload);
             auto details = terminal->details();
             std::string payload = fmt::format("{}:{}", details.columns, details.rows);
             std::vector<uint8_t> data(payload.begin(), payload.end());
