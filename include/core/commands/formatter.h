@@ -1,8 +1,9 @@
-#ifndef __CLIENT_CORE_FORMATTER__
-#define __CLIENT_CORE_FORMATTER__
+#ifndef __JC_CORE_COMMANDS_FORMATTER__
+#define __JC_CORE_COMMANDS_FORMATTER__
 
 #include <chrono>
 #include <iostream>
+#include <map>
 #include <fmt/format.h>
 
 using namespace std::chrono;
@@ -92,4 +93,5 @@ namespace core::commands
         return mappings;
     }
 }
-#endif // __CLIENT_CORE_FORMATTER__
+
+#endif //__JC_CORE_COMMANDS_FORMATTER__

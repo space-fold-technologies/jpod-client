@@ -1,0 +1,14 @@
+./jc image import --archive-path /home/william/samples/alpine.tar.gz --format afs
+./jc image ls
+./jc image build -t postgres:latest -f /home/william/samples/Podfile
+
+
+./jc container create -n foxcon -e JAVA_HOME=/opt/java -e GOLANG_ROOT=/opt/golang -p 9000:9000 -p 8500:5000 --network=nat -i alpine:latest
+./jc container ls
+./jc container logs --name foxcon -n 10 -f true -t true
+./jc container rm --name foxcon
+./jc container exec -i true -u root -n foxcon /bin/sh
+./jc container start -n foxcon
+./jc container stop -n foxcon
+
+export JPOD_UNIX_DOMAIN_FILE="/home/william/Projects/updates/unix.socket.jpod"

@@ -1,77 +1,51 @@
+#include <core/sessions/interactive_session.h>
 #include <domain/containers/log_command.h>
-#include <core/operations/operation.h>
 #include <domain/containers/payloads.h>
-#include <lyra/lyra.hpp>
 #include <fmt/color.h>
 
-using namespace core::connections;
+namespace ro = core::operations::request;
 
-namespace domain::containers
+namespace domain::containers {
+log_command::log_command() : command("logs"), name(""), follow(false), tail(0), timestamps(false), session(nullptr) {}
+void log_command::on_setup(lyra::command &cmd)
 {
-    log_command::log_command():lines(20)
-    {
-    }
-    std::string log_command::name()
-    {
-        return "log";
-    }
-    std::string log_command::description()
-    {
-        return "fetch logs from a container";
-    }
-    void log_command::setup(lyra::command &builder)
-    {
-        builder.add_argument(
-            lyra::opt(container_name, "name")
-                ["-n"]["--name"]
-                    .required()("unique name for container {or identifier}"));
-    }
-    void log_command::on_run(const lyra::group &g)
-    {
-        // might need tp look into adding extra commands
-        operation = std::make_unique<core::operations::operation>(*this);
-        operation->initialize();
-    }
+  cmd.add_argument(
+    lyra::opt(name, "name").name("--name").required().help("unique name for container {or identifier}"));
+  cmd.add_argument(lyra::opt(name, "follow").name("-f").name("--follow").optional().help("follow log output"));
+  cmd.add_argument(lyra::opt(tail, "tail")
+                     .name("-n")
+                     .name("--tail")
+                     .optional()
+                     .help("number of lines to show from the end of the logs (default : 'all' )"));
 
-    // callbacks
-    void log_command::on_operation_started()
-    {
-        if (!container_name.empty())
-        {
-            container_term_order order{container_name};
-            auto content = pack_container_term_order(order);
-            operation->write_order(operation_target::container, request_operation::start, content);
-        }
-        else
-        {
-            operation->shutdown();
-            fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘ no container identifier specified!\n");
-        }
-    }
-    void log_command::on_operation_data_received(
-        core::connections::operation_target target,
-        core::connections::response_operation operation,
-        const std::vector<uint8_t> &payload)
-    {
-    }
-    void log_command::on_operation_complete(const std::error_code &error, const std::string &details)
-    {
-        if (error)
-        {
-            operation->shutdown();
-            fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "container error:✘ {}!\n", details);
-        }
-    }
-    void log_command::on_progress_update(const std::string &operation, const std::vector<uint8_t> &content)
-    {
-        // No progress to display
-    }
-    void log_command::on_operation_success(const std::string &payload)
-    {
-        operation->shutdown();
-        fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", payload);
-    }
-    log_command::~log_command()
-    {
-    }
+  cmd.add_argument(
+    lyra::opt(timestamps, "timestamps").name("-t").name("--timestamps").optional().help("show timestamps"));
 }
+void log_command::on_invockation(const lyra::group &g)
+{
+  session = std::make_unique<interactive_session>(*this);
+  // now to set up the needed operational resources
+  session->connect();
+}
+void log_command::on_start(bool is_remote)
+{
+  if (!is_remote) {
+    container_log_order order{ name, follow, tail, timestamps };
+    auto content = pack_container_log_order(order);
+    session->write(ro::operation::start, ro::target::container, content);
+  }
+}
+void log_command::on_data_received(const std::vector<uint8_t> &data) {
+    std::string entry(data.begin(), data.end());
+    fmt::print(entry);
+}
+void log_command::on_finish(bool is_failure, const std::string &message)
+{
+  if (is_failure) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
+  } else {
+    fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "\n✔{}", message);
+  }
+}
+log_command::~log_command() {}
+}// namespace domain::containers

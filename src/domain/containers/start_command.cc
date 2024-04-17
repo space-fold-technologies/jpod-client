@@ -1,77 +1,44 @@
-#include <domain/containers/start_command.h>
-#include <core/operations/operation.h>
+#include <core/sessions/rpc_session.h>
 #include <domain/containers/payloads.h>
-#include <lyra/lyra.hpp>
+#include <domain/containers/start_command.h>
 #include <fmt/color.h>
 
-using namespace core::connections;
+namespace ro = core::operations::request;
 
-namespace domain::containers
+namespace domain::containers {
+start_command::start_command() : command("start"), name(""), session(nullptr) {}
+void start_command::on_setup(lyra::command &cmd)
 {
-    start_command::start_command()
-    {
-    }
-    std::string start_command::name()
-    {
-        return "start";
-    }
-    std::string start_command::description()
-    {
-        return "start an existing container";
-    }
-    void start_command::setup(lyra::command &builder)
-    {
-        builder.add_argument(
-            lyra::opt(container_name, "name")
-                ["-n"]["--name"]
-                    .required()("unique name for container {or identifier}"));
-    }
-    void start_command::on_run(const lyra::group &g)
-    {
-        // might need tp look into adding extra commands
-        operation = std::make_unique<core::operations::operation>(*this);
-        operation->initialize();
-    }
-
-    // callbacks
-    void start_command::on_operation_started()
-    {
-        if (!container_name.empty())
-        {
-            container_term_order order{container_name};
-            auto content = pack_container_term_order(order);
-            operation->write_order(operation_target::container, request_operation::start, content);
-        }
-        else
-        {
-            operation->shutdown();
-            fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘ no container identifier specified!\n");
-        }
-    }
-    void start_command::on_operation_data_received(
-        core::connections::operation_target target,
-        core::connections::response_operation operation,
-        const std::vector<uint8_t> &payload)
-    {
-    }
-    void start_command::on_operation_complete(const std::error_code &error, const std::string &details)
-    {
-        if (error)
-        {
-            operation->shutdown();
-            fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "container error:✘ {}!\n", details);
-        }
-    }
-    void start_command::on_progress_update(const std::string &operation, const std::vector<uint8_t> &content)
-    {
-        // No progress to display
-    }
-    void start_command::on_operation_success(const std::string &payload)
-    {
-        operation->shutdown();
-        fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", payload);
-    }
-    start_command::~start_command()
-    {
-    }
+  cmd.add_argument(
+    lyra::opt(name, "name").name("-n").name("--name").required().help("unique name for container {or identifier}"));
 }
+void start_command::on_invockation(const lyra::group &g)
+{
+  session = std::make_unique<rpc_session>(*this);
+  // now to set up the needed operational resources
+  session->connect();
+}
+void start_command::on_start()
+{
+
+  container_term_order order{ name };
+  auto content = pack_container_term_order(order);
+  session->write(ro::operation::start, ro::target::container, content);
+}
+void start_command::on_response(const std::vector<uint8_t> &data)
+{
+  session->disconnect();
+  auto message = std::string(data.begin(), data.end());
+  fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", message);
+  fmt::print(fg(fmt::color::white) | fmt::emphasis::bold, "\n");
+}
+void start_command::on_finish(bool is_failure, const std::string &message)
+{
+  session->disconnect();
+  if (is_failure) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
+  }
+  fmt::print(fg(fmt::color::white) | fmt::emphasis::bold, "\n");
+}
+start_command::~start_command() {}
+}// namespace domain::containers

@@ -1,4 +1,3 @@
-
 # Is CMake verbose?
 function(is_verbose var)
   if("${CMAKE_MESSAGE_LOG_LEVEL}" STREQUAL "VERBOSE"

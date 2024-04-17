@@ -1,40 +1,38 @@
-#ifndef __CLIENT_DOMAIN_IMAGES_IMPORT_IMAGE_COMMAND__
-#define __CLIENT_DOMAIN_IMAGES_IMPORT_IMAGE_COMMAND__
+#ifndef __JC_DOMAIN_IMAGES_IMPORT_COMMAND__
+#define __JC_DOMAIN_IMAGES_IMPORT_COMMAND__
 
-#include <core/operations/operation_listener.h>
-#include <core/commands/sub_command.h>
+#include <core/commands/command.h>
+#include <core/sessions/staged_session_listener.h>
 #include <memory>
 
-namespace core::operations
-{
-    class operation;
+namespace core::operations {
+class staged_session;
 };
-
-namespace cn = core::connections;
-namespace domain::images
-{
-    class import_command : public core::commands::sub_command, public core::operations::operation_listener
-    {
-    public:
-        import_command();
-        virtual ~import_command();
-        std::string name() override;
-        std::string description() override;
-        void setup(lyra::command &builder) override;
-        void on_run(const lyra::group &g) override;
-        void on_operation_started() override;
-        void on_operation_data_received(
-            cn::operation_target target,
-            cn::response_operation operation,
-            const std::vector<uint8_t> &payload) override;
-        void on_operation_success(const std::string &payload) override;
-        void on_operation_complete(const std::error_code &error, const std::string &details) override;
-        void on_progress_update(const std::string &operation, const std::vector<uint8_t> &content) override;
-
-    private:
-        std::string file_path;
-        std::string format;
-        std::unique_ptr<core::operations::operation> operation;
-    };
+namespace indicators {
+class ProgressBar;
 }
-#endif // __CLIENT_DOMAIN_IMAGES_IMPORT_IMAGE_COMMAND__
+using namespace core::operations;
+namespace domain::images {
+class import_command
+  : public core::commands::command
+  , public core::operations::staged_session_listener
+{
+public:
+  import_command();
+  void on_setup(lyra::command &cmd) override;
+  void on_invockation(const lyra::group &g) override;
+  // callback listeners
+  void on_start() override;
+  void on_progress(const std::string &feed, float progress) override;
+  void on_finish(bool is_failure, const std::string &message) override;
+  virtual ~import_command();
+
+private:
+  std::string file_path;
+  std::string format;
+  std::unique_ptr<staged_session> session;
+  std::unique_ptr<indicators::ProgressBar> progress_bar;
+};
+}// namespace domain::images
+
+#endif//__JC_DOMAIN_IMAGES_IMPORT_COMMAND__

@@ -1,119 +1,90 @@
-#include <domain/containers/shell_command.h>
-#include <domain/containers/shell/terminal.h>
-#include <core/operations/operation.h>
+#include <core/sessions/interactive_session.h>
 #include <domain/containers/payloads.h>
-#include <lyra/lyra.hpp>
+#include <domain/containers/shell_command.h>
+#include <domain/containers/terminal.h>
 #include <fmt/color.h>
 
-using namespace core::connections;
+namespace ro = core::operations::request;
 
-namespace domain::containers
+namespace domain::containers {
+shell_command::shell_command() : command("exec"), name(""), interactive(false), user(""), commands{}, session(nullptr)
+{}
+void shell_command::on_setup(lyra::command &cmd)
 {
-    shell_command::shell_command()
-    {
-    }
-    std::string shell_command::name()
-    {
-        return "shell";
-    }
-    std::string shell_command::description()
-    {
-        return "forward an existing containers shell";
-    }
-    void shell_command::setup(lyra::command &builder)
-    {
-        builder.add_argument(
-            lyra::opt(container_name, "name")
-                ["-n"]["--name"]
-                    .required()("unique name for container {or identifier}"));
-    }
-    void shell_command::on_run(const lyra::group &g)
-    {
-        // might need tp look into adding extra commands
-        operation = std::make_unique<core::operations::operation>(*this);
-        terminal = std::make_unique<shells::terminal>(operation->context(), *this);
-        operation->initialize();
-        terminal->initiate();
-    }
-
-    // callbacks
-    void shell_command::on_operation_started()
-    {
-        if (!container_name.empty())
-        {
-            std::vector<uint8_t> data(container_name.begin(), container_name.end());
-            container_shell_order order{shell_order_type::start_session, data};
-            auto content = pack_container_shell_order(order);
-            operation->write_order(operation_target::container, request_operation::shell, content);
-        }
-        else
-        {
-            operation->shutdown();
-            fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘ no container identifier specified!\n");
-        }
-    }
-    void shell_command::on_operation_data_received(
-        core::connections::operation_target target,
-        core::connections::response_operation operation,
-        const std::vector<uint8_t> &payload)
-    {
-        if (terminal)
-        {
-            terminal->write(payload);
-        }
-    }
-    void shell_command::on_operation_complete(const std::error_code &error, const std::string &details)
-    {
-        if (error)
-        {
-            operation->shutdown();
-            fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "container error:✘ {}!\n", details);
-        }
-    }
-    void shell_command::on_progress_update(const std::string &operation, const std::vector<uint8_t> &content)
-    {
-        // No progress to display
-    }
-    void shell_command::on_operation_success(const std::string &payload)
-    {
-        // terminal started in the daemon
-
-        if (payload.find("initialized") != std::string::npos && terminal)
-        {
-            //fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", payload);
-            auto details = terminal->details();
-            std::string payload = fmt::format("{}:{}", details.columns, details.rows);
-            std::vector<uint8_t> data(payload.begin(), payload.end());
-            container_shell_order order{shell_order_type::terminal_size, data};
-            auto content = pack_container_shell_order(order);
-            operation->write_order(operation_target::container, request_operation::shell, content);
-            terminal->start_io();
-        }
-    }
-    void shell_command::on_input_received(const std::vector<uint8_t> &content)
-    {
-        container_shell_order order{shell_order_type::terminal_feed, content};
-        auto payload = pack_container_shell_order(order);
-        operation->write_order(operation_target::container, request_operation::shell, payload);
-    }
-    void shell_command::on_terminal_initialized()
-    {
-        // terminal initialized
-    }
-    void shell_command::on_terminal_resized(uint32_t rows, uint32_t columns)
-    {
-        std::string payload = fmt::format("{}:{}", columns, rows);
-        std::vector<uint8_t> data(container_name.begin(), container_name.end());
-        container_shell_order order{shell_order_type::start_session, data};
-        auto content = pack_container_shell_order(order);
-        operation->write_order(operation_target::container, request_operation::shell, content);
-    }
-    void shell_command::on_terminal_error(const std::error_code &err)
-    {
-        operation->shutdown();
-        fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "terminal error:✘ {}!\n", err.message());
-    }
-    shell_command::~shell_command()
-    {
-    }
+  cmd.add_argument(
+    lyra::opt(name, "name").name("-n").name("--name").required().help("unique name for container {or identifier}"));
+  cmd.add_argument(lyra::opt(name, "interactive")
+                     .name("-i")
+                     .name("--interactive")
+                     .optional()
+                     .help("keep STDIN open even if not attached"));
+  cmd.add_argument(lyra::opt(user, "user")
+                     .name("-u")
+                     .name("--user")
+                     .optional()
+                     .help("username or UID (format: '<name|uid>[:<group|gid>]')"));
+  cmd.add_argument(lyra::arg(commands, "command").optional().help("The command, and arguments, to attempt to run."));
 }
+void shell_command::on_invockation(const lyra::group &g)
+{
+  session = std::make_unique<interactive_session>(*this);
+  forwarded_terminal = std::make_unique<terminal>(session->context(), *this);
+  // now to set up the needed operational resources
+  session->connect();
+}
+void shell_command::on_start(bool is_remote)
+{
+  if (!is_remote) {
+    forwarded_terminal->initiate();
+  } else {
+    forwarded_terminal->start_io();
+  }
+}
+void shell_command::on_data_received(const std::vector<uint8_t> &data)
+{
+  if (forwarded_terminal) { forwarded_terminal->write(data); }
+}
+void shell_command::on_finish(bool is_failure, const std::string &message)
+{
+  if (is_failure) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
+  } else {
+    fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "\n✔{}", message);
+  }
+}
+
+void shell_command::on_input_received(const std::vector<uint8_t> &content)
+{
+  container_shell_order order{ shell_order_type::terminal_feed, content };
+  auto payload = pack_container_shell_order(order);
+  session->write(ro::operation::shell, ro::target::container, payload);
+}
+void shell_command::on_terminal_initialized()
+{
+  auto details = forwarded_terminal->details();
+  order_properties properties{};
+  properties.name = name;
+  properties.columns = details.columns;
+  properties.rows = details.rows;
+  properties.commands = commands;
+  properties.interactive = interactive;
+  properties.user = user;
+  container_shell_order order{ shell_order_type::start_session, pack_container_properties(properties) };
+  auto content = pack_container_shell_order(order);
+  session->write(ro::operation::shell, ro::target::container, content);
+}
+void shell_command::on_terminal_resized(uint32_t rows, uint32_t columns)
+{
+  std::string payload = fmt::format("{}:{}", columns, rows);
+  std::vector<uint8_t> data(payload.begin(), payload.end());
+  container_shell_order order{ shell_order_type::terminal_size, data };
+  auto content = pack_container_shell_order(order);
+  session->write(ro::operation::shell, ro::target::container, content);
+}
+void shell_command::on_terminal_error(const std::error_code &err)
+{
+  if (session) { session->disconnect(); }
+  fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "terminal error:✘ {}!\n", err.message());
+}
+shell_command::~shell_command() {}
+}// namespace domain::containers
