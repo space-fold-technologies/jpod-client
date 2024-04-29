@@ -1,24 +1,26 @@
+#include <core/commands/command.h>
 #include <core/commands/command_registry.h>
-#include <core/commands/base_command.h>
-#include <range/v3/algorithm/for_each.hpp>
-#include <lyra/lyra.hpp>
 
-namespace core::commands
+namespace core::commands {
+command_registry::command_registry() : commands{} {}
+
+void command_registry::add(const std::string &scope, handler_provider provider)
 {
-    command_registry::command_registry()
-    {
-    }
-    void command_registry::add(std::shared_ptr<base_command> entry)
-    {
-        this->command_map.emplace(entry->name(), entry);
-    }
-    void command_registry::register_commands(lyra::cli& cli)
-    {
-        // register all sub commands with the application
-        ranges::for_each(
-            command_map,
-            [&cli](const auto &entry) {
-                    entry.second->initialize(cli);
-            });
-    }
+  if (scopes.find(scope) == scopes.end()) { scopes.try_emplace(scope, lyra::command(scope)); }
+  if (commands.find(scope) == commands.end()) { commands.try_emplace(scope, std::vector<std::unique_ptr<command>>{}); }
+  if (auto pos = scopes.find(scope); pos != scopes.end()) {
+    auto command = provider();
+    command->initialize(pos->second);
+    commands.at(scope).push_back(std::move(command));
+  }
 }
+void command_registry::initialize(lyra::cli &cli)
+{
+  std::for_each(scopes.begin(), scopes.end(), [&cli](const auto &entry) { cli.add_argument(entry.second); });
+}
+command_registry::~command_registry()
+{
+  commands.clear();
+  scopes.clear();
+}
+}// namespace core::commands

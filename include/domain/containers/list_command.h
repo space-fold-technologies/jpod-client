@@ -1,41 +1,31 @@
-#ifndef __CLIENT_DOMAIN_CONTAINERS_LIST_CONTAINER_COMMAND__
-#define __CLIENT_DOMAIN_CONTAINERS_LIST_CONTAINER_COMMAND__
+#ifndef __JC_DOMAIN_CONTAINERS_LIST_COMMAND__
+#define __JC_DOMAIN_CONTAINERS_LIST_COMMAND__
 
-#include <core/commands/sub_command.h>
-#include <core/operations/operation_listener.h>
+#include <core/commands/command.h>
+#include <core/sessions/rpc_session_listener.h>
 #include <memory>
-#include <map>
 
-namespace core::operations
-{
-    class operation;
+namespace core::operations {
+class rpc_session;
 };
-namespace domain::containers
+using namespace core::operations;
+namespace domain::containers {
+class list_command
+  : public core::commands::command
+  , public core::operations::rpc_session_listener
 {
-    class list_command : public core::commands::sub_command, public core::operations::operation_listener
-    {
-    public:
-        list_command();
-        virtual ~list_command();
-        std::string name() override;
-        std::string description() override;
-        void setup(lyra::command &builder) override;
-        void on_run(const lyra::group &g) override;
+public:
+  list_command();
+  void on_setup(lyra::command &cmd) override;
+  void on_invockation(const lyra::group &g) override;
+  void on_start() override;
+  void on_response(const std::vector<uint8_t> &data) override;
+  void on_finish(bool is_failure, const std::string &message) override;
+  virtual ~list_command();
 
-        // callbacks
-        void on_operation_started() override;
-        void on_operation_data_received(
-            core::connections::operation_target target,
-            core::connections::response_operation op,
-            const std::vector<uint8_t> &payload) override;
-        void on_operation_complete(const std::error_code &error, const std::string &details) override;
-        void on_progress_update(const std::string &operation, const std::vector<uint8_t> &content) override;
-        void on_operation_success(const std::string &payload) override;
-
-    private:
-        std::string query;
-        std::unique_ptr<core::operations::operation> operation;
-    };
-}
-
-#endif //__CLIENT_DOMAIN_CONTAINERS_LIST_CONTAINER_COMMAND__
+private:
+  std::string query;
+  std::unique_ptr<rpc_session> session;
+};
+}// namespace domain::containers
+#endif//__JC_DOMAIN_CONTAINERS_LIST_COMMAND__

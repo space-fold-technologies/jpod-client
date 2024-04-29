@@ -1,93 +1,62 @@
-#include <domain/images/list_command.h>
-#include <core/operations/operation.h>
 #include <core/commands/formatter.h>
+#include <core/sessions/rpc_session.h>
+#include <domain/images/list_command.h>
 #include <domain/images/payloads.h>
-#include <lyra/lyra.hpp>
-#include <fmt/format.h>
+#include <fmt/color.h>
 #include <range/v3/algorithm/for_each.hpp>
 #include <tabulate/table.hpp>
 
-using namespace core::connections;
+namespace ro = core::operations::request;
 using namespace tabulate;
 
-namespace domain::images
+namespace domain::images {
+list_command::list_command() : command("ls"), query(""), session(nullptr) {}
+void list_command::on_setup(lyra::command &cmd)
 {
-    list_command::list_command() : query(""), operation(nullptr)
-    {
-    }
-    std::string list_command::name()
-    {
-        return "ls";
-    }
-    std::string list_command::description()
-    {
-        return "list images matching pattern";
-    }
-    void list_command::setup(lyra::command &builder)
-    {
-        builder.add_argument(lyra::opt(query, "query")
-                                 .name("-q")
-                                 .name("--query")
-                                 .optional()
-                                 .help(
-                                     "Query to filter."));
-    }
-    void list_command::on_run(const lyra::group &g)
-    {
-        // might need tp look into adding extra commands
-        operation = std::make_unique<core::operations::operation>(*this);
-        operation->initialize();
-    }
-    void list_command::on_operation_started()
-    {
-        image_term_order order{query};
-        auto content = pack_image_term_order(order);
-        operation->write_order(operation_target::image, request_operation::list, content);
-    }
-    void list_command::on_operation_data_received(
-        core::connections::operation_target target,
-        core::connections::response_operation op,
-        const std::vector<uint8_t> &payload)
-    {
-        operation->shutdown();
-        auto summary = unpack_summary(payload);
-        Table table;
-        table.add_row({"NAME", "REPOSITORY", "TAG", "IMAGE ID", "CREATED", "SIZE"});
-        for (std::size_t i = 0; i < 6; ++i)
-        {
-            table.format()
-                .font_color(Color::yellow)
-                .font_align(FontAlign::center)
-                .font_style({FontStyle::bold});
-        }
-        ranges::for_each(
-            summary.entries,
-            [&table](const auto &entry)
-            {
-                table.add_row({entry.name,
-                               entry.repository,
-                               entry.tag,
-                               entry.identifier,
-                               core::commands::format_time_ago(entry.created_at),
-                               core::commands::format_file_size(entry.size)});
-            });
-        std::cout << table << std::endl;
-    }
-    void list_command::on_progress_update(const std::string &operation, const std::vector<uint8_t> &content)
-    {
-    }
-    void list_command::on_operation_complete(const std::error_code &error, const std::string &details)
-    {
-        if (error)
-        {
-            //logger->error("list command operation failure: {} {}", error.message(), details);
-        }
-    }
-    void list_command::on_operation_success(const std::string &payload)
-    {
-    }
-    list_command::~list_command()
-    {
-        // we will do some cleaning here if necessary
-    }
+  cmd.add_argument(lyra::opt(query, "query")
+                     .name("-q")
+                     .name("--query")
+                     .optional()
+                     .help("query to filter out the containers you need"));
 }
+void list_command::on_invockation(const lyra::group &g)
+{
+  session = std::make_unique<rpc_session>(*this);
+  // now to set up the needed operational resources
+  session->connect();
+}
+void list_command::on_start()
+{
+  image_term_order order{ query };
+  auto content = pack_image_term_order(order);
+  session->write(ro::operation::list, ro::target::image, content);
+}
+void list_command::on_response(const std::vector<uint8_t> &data)
+{
+  session->disconnect();
+  auto summary = unpack_summary(data);
+  Table table;
+  table.add_row({ "NAME", "REPOSITORY", "TAG", "IMAGE ID", "CREATED", "SIZE" });
+  for (std::size_t i = 0; i < 6; ++i) {
+    table.format().font_color(Color::yellow).font_align(FontAlign::center).font_style({ FontStyle::bold });
+  }
+  ranges::for_each(summary.entries, [&table](const auto &entry) {
+    table.add_row({ entry.name,
+      entry.repository,
+      entry.tag,
+      entry.identifier,
+      core::commands::format_time_ago(entry.created_at),
+      core::commands::format_file_size(entry.size) });
+  });
+  std::cout << table << std::endl;
+}
+void list_command::on_finish(bool is_failure, const std::string &message)
+{
+  if (is_failure) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
+  } else {
+    fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "\n✔{}", message);
+  }
+}
+list_command::~list_command() {}
+}// namespace domain::images

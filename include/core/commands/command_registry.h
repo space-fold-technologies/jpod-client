@@ -1,27 +1,29 @@
-#ifndef __CLIENT_CORE_COMMAND_REGISTRY__
-#define __CLIENT_CORE_COMMAND_REGISTRY__
+#ifndef __JC_CORE_COMMANDS_COMMAND_REGISTRY__
+#define __JC_CORE_COMMANDS_COMMAND_REGISTRY__
 
-#include <map>
-#include <string>
+#include <lyra/lyra.hpp>
+#include <functional>
 #include <memory>
+#include <string>
+#include <vector>
+#include <map>
 
-namespace lyra
-{
-    class cli;
-};
 namespace core::commands
 {
-    class base_command;
+    class command;
+
+    using handler_provider = std::function<std::unique_ptr<command>()>;
     class command_registry
     {
-       
     public:
         command_registry();
-        void add(std::shared_ptr<base_command> entry);
-        void register_commands(lyra::cli& cli);
+        virtual ~command_registry();
+        void add(const std::string &scope, handler_provider provider);
+        void initialize(lyra::cli& cli);
+
     private:
-        std::map<std::string, std::shared_ptr<base_command>> command_map;
+        std::map<std::string, lyra::command> scopes;
+        std::map<std::string, std::vector<std::unique_ptr<command>>> commands;
     };
 }
-
-#endif // __CLIENT_CORE_COMMAND_REGISTRY__
+#endif //__JC_CORE_COMMANDS_COMMAND_REGISTRY__
