@@ -2,20 +2,19 @@
 #define __JC_DOMAIN_IMAGES_IMPORT_COMMAND__
 
 #include <core/commands/command.h>
-#include <core/sessions/staged_session_listener.h>
+#include <core/sessions/rpc_session_listener.h>
 #include <memory>
 
-namespace core::operations {
-class staged_session;
+namespace core::operations
+{
+  class rpc_session;
 };
-namespace indicators {
-class ProgressBar;
-}
+
 using namespace core::operations;
 namespace domain::images {
 class import_command
   : public core::commands::command
-  , public core::operations::staged_session_listener
+  , public core::operations::rpc_session_listener
 {
 public:
   import_command();
@@ -23,15 +22,13 @@ public:
   void on_invockation(const lyra::group &g) override;
   // callback listeners
   void on_start() override;
-  void on_progress(const std::string &feed, float progress) override;
+  void on_response(const std::vector<uint8_t> &data) override;
   void on_finish(bool is_failure, const std::string &message) override;
   virtual ~import_command();
 
 private:
   std::string file_path;
-  std::string format;
-  std::unique_ptr<staged_session> session;
-  std::unique_ptr<indicators::ProgressBar> progress_bar;
+  std::unique_ptr<rpc_session> session;
 };
 }// namespace domain::images
 
