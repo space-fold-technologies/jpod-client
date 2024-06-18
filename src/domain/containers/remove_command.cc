@@ -27,16 +27,16 @@ void remove_command::on_start()
 }
 void remove_command::on_response(const std::vector<uint8_t> &data)
 {
+  session->disconnect();
   auto message = std::string(data.begin(), data.end());
   fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", message);
+  fmt::print(fg(fmt::color::white) | fmt::emphasis::bold, "\n");
 }
-void remove_command::on_finish(bool is_failure, const std::string &message)
+void remove_command::on_failure(const std::string &message)
 {
-  if (is_failure) {
-    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
-  } else {
-    fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "\n✔{}", message);
-  }
+  session->disconnect();
+  fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
+  fmt::print(fg(fmt::color::white) | fmt::emphasis::bold, "\n");
 }
 remove_command::~remove_command() {}
 }// namespace domain::containers

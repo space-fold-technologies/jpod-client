@@ -8,9 +8,7 @@ namespace fs = std::filesystem;
 namespace ro = core::operations::request;
 
 namespace domain::images {
-import_command::import_command()
-  : command("import"), file_path("."), session(nullptr)
-{}
+import_command::import_command() : command("import"), file_path("."), session(nullptr) {}
 void import_command::on_setup(lyra::command &cmd)
 {
   cmd.add_argument(lyra::opt(file_path, "archive").name("--archive-path").required().help("Image Archive to import."));
@@ -34,16 +32,15 @@ void import_command::on_start()
 }
 void import_command::on_response(const std::vector<uint8_t> &data)
 {
-  
+  session->disconnect();
+  std::string message(data.begin(), data.end());
+  fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "import success: {}!\n", message);
+  fmt::print(fg(fmt::color::white), "\n");
 }
-void import_command::on_finish(bool is_failure, const std::string &message)
+void import_command::on_failure(const std::string &message)
 {
   session->disconnect();
-  if (is_failure) {
-    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "import error: {}!\n", message);
-  } else {
-    fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "import success: {}!\n", message);
-  }
+  fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "import error: {}!\n", message);
   fmt::print(fg(fmt::color::white), "\n");
 }
 import_command::~import_command() {}

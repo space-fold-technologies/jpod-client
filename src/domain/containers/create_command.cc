@@ -66,14 +66,10 @@ void create_command::on_response(const std::vector<uint8_t> &data)
     fmt::print(fg(fmt::color::white) | fmt::emphasis::bold, "\n");
   }
 }
-void create_command::on_finish(bool is_failure, const std::string &message)
+void create_command::on_failure(const std::string &message)
 {
   session->disconnect();
-  if (is_failure) {
-    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
-  } else {
-    fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "\n✔{}", message);
-  }
+  fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
   fmt::print(fg(fmt::color::white) | fmt::emphasis::bold, "\n");
 }
 create_command::~create_command() {}

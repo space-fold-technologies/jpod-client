@@ -23,7 +23,7 @@ public:
   // callback listeners
   void on_start() override;
   void on_response(const std::vector<uint8_t> &data) override;
-  void on_finish(bool is_failure, const std::string &message) override;
+  void on_failure(const std::string &message) override;
   virtual ~import_command();
 
 private:
