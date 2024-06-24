@@ -12,6 +12,7 @@
 #include <domain/images/import_command.h>
 #include <domain/images/list_command.h>
 #include <domain/images/build_command.h>
+#include <domain/images/pull_command.h>
 
 namespace cc = core::commands;
 namespace di = domain::images;
@@ -22,6 +23,7 @@ inline auto setup_commands(cc::command_registry &registry) -> void
   registry.add("image", []() -> cmd_ptr { return std::make_unique<di::list_command>(); });
   registry.add("image", []() -> cmd_ptr { return std::make_unique<di::build_command>(); });
   registry.add("image", []() -> cmd_ptr { return std::make_unique<di::import_command>(); });
+  registry.add("image", []() -> cmd_ptr { return std::make_unique<di::pull_command>(); });
   registry.add("container", []() -> cmd_ptr { return std::make_unique<dc::create_command>(); });
   registry.add("container", []() -> cmd_ptr { return std::make_unique<dc::list_command>(); });
   registry.add("container", []() -> cmd_ptr { return std::make_unique<dc::start_command>(); });

@@ -1,4 +1,5 @@
-./jc image import --archive-path /home/william/samples/alpine.tar.gz --format afs
+./jc image import --archive-path /home/william/samples/alpine.tar.gz
+./jc image pull postgres:latest
 ./jc image ls
 ./jc image build -t postgres:latest -f /home/william/samples/Podfile
 

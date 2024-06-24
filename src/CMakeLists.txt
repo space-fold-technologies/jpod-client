@@ -19,6 +19,7 @@ add_executable(jc
                domain/images/import_command.cc
                domain/images/list_command.cc
                domain/images/build_command.cc
+               domain/images/pull_command.cc
                #DOMAIN::CONTAINERS
                domain/containers/list_command.cc
                domain/containers/create_command.cc

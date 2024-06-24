@@ -88,6 +88,20 @@ inline std::vector<uint8_t> pack_import_order(const import_order &order)
   std::memcpy(output.data(), buffer.data(), buffer.size());
   return output;
 };
+struct pull_order
+{
+  std::string target;
+  std::string credentials;
+  MSGPACK_DEFINE(target, credentials)
+};
+inline std::vector<uint8_t> pack_pull_order(const pull_order &order)
+{
+  msgpack::sbuffer buffer;
+  msgpack::pack(buffer, order);
+  std::vector<uint8_t> output(buffer.size());
+  std::memcpy(output.data(), buffer.data(), buffer.size());
+  return output;
+};
 }// namespace domain::images
 MSGPACK_ADD_ENUM(domain::images::step_type);
 #endif//__JC_DOMAIN_IMAGES_PAYLOADS__
