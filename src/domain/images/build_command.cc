@@ -65,6 +65,14 @@ void build_command::on_finish(bool is_failure, const std::string &message)
 {
   session->disconnect();
   show_console_cursor(true);
+  if(is_failure)
+  {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
+  } else 
+  {
+    fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "import success: {}!\n", message);
+  }
+  fmt::print(fg(fmt::color::white), "\n");
 }
 build_command::~build_command() {}
 }// namespace domain::images

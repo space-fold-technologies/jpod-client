@@ -31,12 +31,10 @@ void stop_command::on_response(const std::vector<uint8_t> &data)
   fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", message);
   fmt::print(fg(fmt::color::white) | fmt::emphasis::bold, "\n");
 }
-void stop_command::on_finish(bool is_failure, const std::string &message)
+void stop_command::on_failure(const std::string &message)
 {
   session->disconnect();
-  if (is_failure) {
-    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
-  }
+  fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!", message);
   fmt::print(fg(fmt::color::white) | fmt::emphasis::bold, "\n");
 }
 stop_command::~stop_command() {}

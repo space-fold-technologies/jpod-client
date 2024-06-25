@@ -11,7 +11,7 @@ namespace core::operations
         public:
         virtual void on_start() = 0;
         virtual void on_response(const std::vector<uint8_t>& data) = 0;
-        virtual void on_finish(bool is_failure, const std::string &message) = 0;
+        virtual void on_failure(const std::string &message) = 0;
     };
 }
 #endif //__JC_CORE_SESSIONS_RPC_SESSION_LISTENER__
