@@ -17,8 +17,27 @@ file_descriptor(::dup(STDIN_FILENO)),
 in(context.get_executor(), file_descriptor), 
 out(context.get_executor(), ::dup(STDOUT_FILENO)),
 previous_attributes{}, 
-restored(false)
-{}
+restored(false),
+signals(context, SIGWINCH)
+{
+  signals.async_wait(
+  [this](std::error_code err, int signal)
+  {
+      #if defined(TIOCGWINSZ)
+        winsize size{};
+        if (::ioctl(file_descriptor, TIOCGWINSZ, &size) == 0) 
+        {
+          this->listener.on_terminal_resized(size.ws_row, size.ws_col);
+        } 
+      #elif defined(TIOCGSIZE)
+          ttysize size{}
+          if(::ioctl(file_descriptor, TIOCGWINSZ, &size) == 0)
+          {
+            this->listener.on_terminal_resized(size.ts_row, size.ts.col);
+          }
+      #endif    
+  });
+}
 
 void terminal::initiate()
 {
@@ -35,13 +54,13 @@ void terminal::initiate()
         {
           listener.on_terminal_initialized(size.ws_row, size.ws_col);
         } 
-    #elif defined(TIOCGSIZE)
-        ttysize size{}
-        if(::ioctl(file_descriptor, TIOCGWINSZ, &size) == 0)
-        {
-          listener.on_terminal_initialized(size.ts_row, size.ts.col);
-        }
-    #endif
+      #elif defined(TIOCGSIZE)
+          ttysize size{}
+          if(::ioctl(file_descriptor, TIOCGWINSZ, &size) == 0)
+          {
+            listener.on_terminal_initialized(size.ts_row, size.ts.col);
+          }
+      #endif
     } 
     else 
     {

@@ -2,6 +2,7 @@
 #define __JC_DOMAIN_CONTAINERS_TERMINAL__
 
 #include <asio/posix/stream_descriptor.hpp>
+#include <asio/signal_set.hpp>
 #include <asio/streambuf.hpp>
 #include <termios.h>
 #include <cstdint>
@@ -40,8 +41,8 @@ private:
   asio::posix::stream_descriptor out;
   termios previous_attributes;
   bool restored;
+  asio::signal_set signals;
   asio::streambuf input_buffer;
-  
 };
 }// namespace domain::containers
 #endif//__JC_DOMAIN_CONTAINERS_TERMINAL__
