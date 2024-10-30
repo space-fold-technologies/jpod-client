@@ -11,12 +11,13 @@ using namespace ranges;
 
 namespace domain::containers {
 create_command::create_command()
-  : command("create"), name(""), image(""), env_vars(), port_maps(), network("default"), session(nullptr)
+  : command("create"), name(""), image(""), user("william"), env_vars(), port_maps(), network("default"), session(nullptr)
 {}
 void create_command::on_setup(lyra::command &cmd)
 {
   cmd.add_argument(lyra::opt(name, "name").name("-n").name("--name").required().help("unique name for container"));
   cmd.add_argument(lyra::opt(image, "image")["-i"]["--image"].required()("target image to base container on"));
+  cmd.add_argument(lyra::opt(user, "user")["-u"]["--user"].optional()("user to run the container with"));
   cmd.add_argument(lyra::opt(env_vars, "env-vars")["-e"]["--env"].cardinality(0, 0)("add environment variables"));
 
   cmd.add_argument(
@@ -55,10 +56,22 @@ void create_command::on_start()
 void create_command::on_response(const std::vector<uint8_t> &data)
 {
   std::string payload(data.begin(), data.end());
+  // if (!payload.empty() && payload.size() == 36) {
+  //   container_start_order order{ payload,  user};
+  //   auto content = pack_container_start_order(order);
+  //   session->write(ro::operation::start, ro::target::container, content);
+  // } else {
+  //   session->disconnect();
+  //   auto message = std::string(data.begin(), data.end());
+  //   fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}!\n", message);
+  //   fmt::print(fg(fmt::color::white) | fmt::emphasis::bold, "\n");
+  // }
   if (!payload.empty() && payload.size() == 36) {
-    container_term_order order{ payload };
-    auto content = pack_container_term_order(order);
-    session->write(ro::operation::start, ro::target::container, content);
+    // container_start_order order{ payload,  user};
+    // auto content = pack_container_start_order(order);
+    session->disconnect();
+    fmt::println("created container");
+    //session->write(ro::operation::start, ro::target::container, content);
   } else {
     session->disconnect();
     auto message = std::string(data.begin(), data.end());

@@ -28,13 +28,12 @@ public:
   void initiate();
   void start_io();
   terminal_details details();
-  bool is_active();
-  void restore();
   void write(const std::vector<uint8_t> &content);
 
 private:
   void read_user_input();
   void wait_to_read();
+  void restore();
 
 private:
   asio::io_context &context;

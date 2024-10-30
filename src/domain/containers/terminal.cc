@@ -1,11 +1,10 @@
+#include <domain/containers/terminal_listener.h>
+#include <domain/containers/terminal.h>
+#include <asio/write.hpp>
 #include <asio/post.hpp>
 #include <asio/read.hpp>
-#include <asio/read_until.hpp>
-#include <asio/write.hpp>
-#include <domain/containers/terminal.h>
-#include <domain/containers/terminal_listener.h>
-#include <istream>
 #include <sys/ioctl.h>
+#include <istream>
 #include <thread>
 #include <vector>
 
@@ -21,14 +20,13 @@ void terminal::initiate()
 {
   if (::tcgetattr(file_descriptor, &previous_attributes) == 0) {
     termios current_attributes = previous_attributes;
-    current_attributes.c_iflag &= tcflag_t(~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON));
+    current_attributes.c_iflag &= tcflag_t(~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON | OPOST));
     current_attributes.c_oflag &= tcflag_t(~(OPOST));
     current_attributes.c_lflag &= tcflag_t(~(ECHO | ECHONL | ICANON | ISIG | IEXTEN));
     current_attributes.c_cflag &= tcflag_t(~(CSIZE | PARENB));
     current_attributes.c_cflag |= tcflag_t(~(CS8));
     current_attributes.c_cc[VMIN] = 1;
     current_attributes.c_cc[VTIME] = 0;
-    
     if (::tcsetattr(file_descriptor, TCSANOW, &current_attributes) == 0) {
       listener.on_terminal_initialized();
     } else {
@@ -51,7 +49,7 @@ terminal_details terminal::details()
   details.rows = size.ws_row;
   return details;
 }
-bool terminal::is_active() { return in.is_open() && out.is_open(); }
+
 void terminal::restore()
 {
   ::tcsetattr(file_descriptor, TCSANOW, &previous_attributes);
@@ -59,7 +57,11 @@ void terminal::restore()
 }
 void terminal::write(const std::vector<uint8_t> &content)
 {
-  out.async_write_some(asio::buffer(std::string(content.begin(), content.end())),
+  // new mechanism involving drawing to the screen and tracking the cursors position as well as taking in events from keys and mouse
+  // may need to create a terminal emulation library for this case
+  // detected keys will be handled from asio capture
+  std::string out_buffer(content.begin(), content.end());
+  out.async_write_some(asio::buffer(out_buffer),
     [this](const std::error_code &err, std::size_t bytes_transferred) {
       if (err) { this->listener.on_terminal_error(err); }
     });
@@ -72,11 +74,11 @@ void terminal::read_user_input()
         std::istream stream(&this->input_buffer);
         std::vector<uint8_t> content(bytes_transferred);
         stream.read((char *)&content[0], bytes_transferred);
-        this->input_buffer.consume(bytes_transferred);
-        this->listener.on_input_received(content);
-        this->read_user_input();
+        input_buffer.consume(input_buffer.size());
+        listener.on_input_received(content);
+        read_user_input();
       } else {
-        this->listener.on_terminal_error(err);
+        listener.on_terminal_error(err);
       }
     });
 }
