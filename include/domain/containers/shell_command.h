@@ -30,7 +30,7 @@ public:
   void on_finish(bool is_failure, const std::string &message) override;
   // terminal callbacks
   void on_input_received(const std::vector<uint8_t> &content) override;
-  void on_terminal_initialized() override;
+  void on_terminal_initialized(uint32_t rows, uint32_t columns) override;
   void on_terminal_resized(uint32_t rows, uint32_t columns) override;
   void on_terminal_error(const std::error_code &err) override;
   virtual ~shell_command();

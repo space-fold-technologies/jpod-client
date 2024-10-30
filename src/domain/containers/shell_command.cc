@@ -59,13 +59,12 @@ void shell_command::on_input_received(const std::vector<uint8_t> &content)
   auto payload = pack_container_shell_order(order);
   session->write(ro::operation::shell, ro::target::container, payload);
 }
-void shell_command::on_terminal_initialized()
+void shell_command::on_terminal_initialized(uint32_t rows, uint32_t columns)
 {
-  auto details = forwarded_terminal->details();
   order_properties properties{};
   properties.name = name;
-  properties.columns = details.columns;
-  properties.rows = details.rows;
+  properties.columns = columns;
+  properties.rows = rows;
   properties.commands = commands;
   properties.interactive = interactive;
   properties.user = user;
@@ -83,7 +82,10 @@ void shell_command::on_terminal_resized(uint32_t rows, uint32_t columns)
 }
 void shell_command::on_terminal_error(const std::error_code &err)
 {
-  if (session) { session->disconnect(); }
+  if (session) 
+  { 
+    session->disconnect(); 
+  }
   fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "terminal error:✘ {}!\n", err.message());
 }
 shell_command::~shell_command() {}

@@ -1,24 +1,23 @@
 #ifndef __JC_DOMAIN_CONTAINERS_TERMINAL__
 #define __JC_DOMAIN_CONTAINERS_TERMINAL__
 
-#include <asio/io_context.hpp>
 #include <asio/posix/stream_descriptor.hpp>
 #include <asio/streambuf.hpp>
+#include <termios.h>
 #include <cstdint>
-#include <map>
 #include <memory>
 #include <string>
-#include <termios.h>
+#include <map>
+
+
+namespace asio
+{
+  class io_context;
+};
 
 namespace domain::containers {
 constexpr std::size_t default_read_buffer_size = 1024;
 class terminal_listener;
-struct terminal_details
-{
-  std::string environment;
-  uint32_t rows;
-  uint32_t columns;
-};
 
 class terminal
 {
@@ -27,12 +26,10 @@ public:
   ~terminal();
   void initiate();
   void start_io();
-  terminal_details details();
   void write(const std::vector<uint8_t> &content);
 
 private:
   void read_user_input();
-  void wait_to_read();
   void restore();
 
 private:

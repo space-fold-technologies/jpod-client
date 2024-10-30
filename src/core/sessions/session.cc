@@ -1,23 +1,51 @@
-#include <asio/connect.hpp>
-#include <asio/read.hpp>
-#include <asio/write.hpp>
-#include <chrono>
 #include <core/sessions/session.h>
-#include <cstdlib>
+#include <asio/connect.hpp>
+#include <asio/write.hpp>
+#include <asio/read.hpp>
 #include <fmt/color.h>
+#include <cstdlib>
+#include <chrono>
 #include <thread>
 
 
 namespace core::operations {
-session::session()
-  : _context(), socket(_context), is_running(false), operation_thread(nullptr), timeout_idle(10), timer(nullptr),
-    stream_buffer(1024)
+session::session(): 
+_context(), 
+socket(_context), 
+is_running(false), 
+operation_thread(nullptr), 
+timeout_idle(10), 
+timer(nullptr),
+stream_buffer(1024)
 {}
 void session::connect()
 {
-  // if (const char *env_var = std::getenv("JPOD_UNIX_DOMAIN_FILE"); env_var != nullptr) {
-  //   asio::local::stream_protocol::endpoint endpoint(env_var);
-  //   // you will need to create the endpoint with a unique uid.
+  if (const char *env_var = std::getenv("JPOD_UNIX_DOMAIN_FILE"); env_var != nullptr) 
+  {
+    asio::local::stream_protocol::endpoint endpoint(env_var);
+    // you will need to create the endpoint with a unique uid.
+
+    socket.async_connect(endpoint, [this](const std::error_code &err) 
+    {
+      if (!err) 
+      {
+        this->on_open();
+        read_header(0);
+      } 
+      else 
+      {
+        this->on_error(err);
+      }
+    });
+    operation_thread = std::make_unique<std::thread>(&session::run, this);
+    operation_thread->join();
+
+  } else 
+  {
+    this->on_error(std::error_code{errno, std::system_category()});
+  }
+  // asio::local::stream_protocol::endpoint endpoint("/home/william/voltron/coms/unix.socket.jpod");
+    // you will need to create the endpoint with a unique uid.
 
   //   socket.async_connect(endpoint, [this](const std::error_code &err) {
   //   if (!err) {
@@ -29,23 +57,6 @@ void session::connect()
   // });
   // operation_thread = std::make_unique<std::thread>(&session::run, this);
   // operation_thread->join();
-
-  // } else {
-  //   this->on_error(std::make_error_code(std::errc::bad_file_descriptor));
-  // }
-  asio::local::stream_protocol::endpoint endpoint("/home/william/voltron/coms/unix.socket.jpod");
-    // you will need to create the endpoint with a unique uid.
-
-    socket.async_connect(endpoint, [this](const std::error_code &err) {
-    if (!err) {
-      this->on_open();
-      read_header(0);
-    } else {
-      this->on_error(err);
-    }
-  });
-  operation_thread = std::make_unique<std::thread>(&session::run, this);
-  operation_thread->join();
 }
 
 void session::run()
