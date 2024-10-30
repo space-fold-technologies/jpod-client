@@ -46,10 +46,13 @@ void shell_command::on_data_received(const std::vector<uint8_t> &data)
 }
 void shell_command::on_finish(bool is_failure, const std::string &message)
 {
-  if (is_failure) {
-    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘:{}!\n\r", message);
-  } else {
-    fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔{}\n\r", message);
+  if (is_failure)
+  {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "✘ {}!\n\r", message);
+  }
+  else
+  {
+    fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "✔ {}\n\r", message);
   }
 }
 
