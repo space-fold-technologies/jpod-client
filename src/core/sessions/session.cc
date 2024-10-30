@@ -20,43 +20,43 @@ stream_buffer(1024)
 {}
 void session::connect()
 {
-  if (const char *env_var = std::getenv("JPOD_UNIX_DOMAIN_FILE"); env_var != nullptr) 
-  {
-    asio::local::stream_protocol::endpoint endpoint(env_var);
-    // you will need to create the endpoint with a unique uid.
+  // if (const char *env_var = std::getenv("JPOD_UNIX_DOMAIN_FILE"); env_var != nullptr) 
+  // {
+  //   asio::local::stream_protocol::endpoint endpoint(env_var);
+  //   // you will need to create the endpoint with a unique uid.
 
-    socket.async_connect(endpoint, [this](const std::error_code &err) 
-    {
-      if (!err) 
-      {
-        this->on_open();
-        read_header(0);
-      } 
-      else 
-      {
-        this->on_error(err);
-      }
-    });
-    operation_thread = std::make_unique<std::thread>(&session::run, this);
-    operation_thread->join();
+  //   socket.async_connect(endpoint, [this](const std::error_code &err) 
+  //   {
+  //     if (!err) 
+  //     {
+  //       this->on_open();
+  //       read_header(0);
+  //     } 
+  //     else 
+  //     {
+  //       this->on_error(err);
+  //     }
+  //   });
+  //   operation_thread = std::make_unique<std::thread>(&session::run, this);
+  //   operation_thread->join();
 
-  } else 
-  {
-    this->on_error(std::error_code{errno, std::system_category()});
-  }
-  // asio::local::stream_protocol::endpoint endpoint("/home/william/voltron/coms/unix.socket.jpod");
-    // you will need to create the endpoint with a unique uid.
+  // } else 
+  // {
+  //   this->on_error(std::error_code{errno, std::system_category()});
+  // }
+  asio::local::stream_protocol::endpoint endpoint("/home/william/voltron/coms/unix.socket.jpod");
+    //you will need to create the endpoint with a unique uid.
 
-  //   socket.async_connect(endpoint, [this](const std::error_code &err) {
-  //   if (!err) {
-  //     this->on_open();
-  //     read_header(0);
-  //   } else {
-  //     this->on_error(err);
-  //   }
-  // });
-  // operation_thread = std::make_unique<std::thread>(&session::run, this);
-  // operation_thread->join();
+    socket.async_connect(endpoint, [this](const std::error_code &err) {
+    if (!err) {
+      this->on_open();
+      read_header(0);
+    } else {
+      this->on_error(err);
+    }
+  });
+  operation_thread = std::make_unique<std::thread>(&session::run, this);
+  operation_thread->join();
 }
 
 void session::run()
