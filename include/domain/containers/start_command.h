@@ -26,6 +26,7 @@ public:
 
 private:
   std::string name;
+  std::string user;
   std::unique_ptr<rpc_session> session;
 };
 }// namespace domain::containers

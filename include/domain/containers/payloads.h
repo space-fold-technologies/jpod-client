@@ -23,6 +23,22 @@ inline std::vector<uint8_t> pack_container_creation_order(const container_creati
   return output;
 }
 
+struct container_start_order
+{
+  std::string name;
+  std::string user;
+  MSGPACK_DEFINE(name, user)
+};
+
+inline std::vector<uint8_t> pack_container_start_order(const container_start_order &order)
+{
+  msgpack::sbuffer buffer;
+  msgpack::pack(buffer, order);
+  std::vector<uint8_t> output(buffer.size());
+  std::memcpy(output.data(), buffer.data(), buffer.size());
+  return output;
+}
+
 struct container_term_order
 {
   std::string term;

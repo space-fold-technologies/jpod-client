@@ -6,11 +6,13 @@
 namespace ro = core::operations::request;
 
 namespace domain::containers {
-start_command::start_command() : command("start"), name(""), session(nullptr) {}
+start_command::start_command() : command("start"), name(""), user("william"), session(nullptr) {}
 void start_command::on_setup(lyra::command &cmd)
 {
   cmd.add_argument(
     lyra::opt(name, "name").name("-n").name("--name").required().help("unique name for container {or identifier}"));
+  cmd.add_argument(
+    lyra::opt(user, "user").name("-u").name("--user").optional()("user to run the container image with"));
 }
 void start_command::on_invockation(const lyra::group &g)
 {
@@ -21,8 +23,8 @@ void start_command::on_invockation(const lyra::group &g)
 void start_command::on_start()
 {
 
-  container_term_order order{ name };
-  auto content = pack_container_term_order(order);
+  container_start_order order{ name,  user};
+  auto content = pack_container_start_order(order);
   session->write(ro::operation::start, ro::target::container, content);
 }
 void start_command::on_response(const std::vector<uint8_t> &data)

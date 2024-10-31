@@ -11,7 +11,7 @@ void log_command::on_setup(lyra::command &cmd)
 {
   cmd.add_argument(
     lyra::opt(name, "name").name("--name").required().help("unique name for container {or identifier}"));
-  cmd.add_argument(lyra::opt(name, "follow").name("-f").name("--follow").optional().help("follow log output"));
+  cmd.add_argument(lyra::opt(follow, "follow").name("-f").name("--follow").optional().help("follow log output"));
   cmd.add_argument(lyra::opt(tail, "tail")
                      .name("-n")
                      .name("--tail")
@@ -32,7 +32,7 @@ void log_command::on_start(bool is_remote)
   if (!is_remote) {
     container_log_order order{ name, follow, tail, timestamps };
     auto content = pack_container_log_order(order);
-    session->write(ro::operation::start, ro::target::container, content);
+    session->write(ro::operation::logs, ro::target::container, content);
   }
 }
 void log_command::on_data_received(const std::vector<uint8_t> &data) {

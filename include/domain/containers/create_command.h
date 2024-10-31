@@ -27,6 +27,7 @@ public:
 private:
   std::string name;
   std::string image;
+  std::string user;
   std::vector<std::string> env_vars;
   std::vector<std::string> port_maps;
   std::string network;
