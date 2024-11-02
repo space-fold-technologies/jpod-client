@@ -47,7 +47,7 @@ enum class step_type : int { from = 0, run = 1, work_dir = 2, copy = 3, expose =
 struct stage
 {
   std::string name;
-  std::map<std::string, step_type> steps;
+  std::vector<std::pair<std::string, step_type>> steps;
   MSGPACK_DEFINE(name, steps)
 
   bool operator==(const stage rhs) { return (this->name == rhs.name && this->steps == rhs.steps); }

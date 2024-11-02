@@ -1,0 +1,7 @@
+https://wiki.freebsd.org/VladimirKrstulja/Guides/Jails
+
+http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/13.4-RELEASE/
+
+https://www.ohreally.nl/2021/02/08/freebsd-jails-a-complete-example/
+
+https://clinta.github.io/freebsd-jails-the-hard-way/
