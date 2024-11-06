@@ -27,6 +27,7 @@ inline std::map<std::string, step_type> step_map = {
   {"WORKDIR", step_type::work_dir},
   {"RUN", step_type::run},
   {"COPY", step_type::copy},
+  {"EXTRACT", step_type::extract},
   {"EXPOSE", step_type::expose}
   // clang-format on
 };

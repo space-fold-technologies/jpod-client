@@ -42,7 +42,15 @@ inline summary unpack_summary(const std::vector<uint8_t> &content)
   return result.get().as<summary>();
 }
 
-enum class step_type : int { from = 0, run = 1, work_dir = 2, copy = 3, expose = 4 };
+enum class step_type : int 
+{ 
+  from = 0, 
+  run = 1, 
+  work_dir = 2, 
+  copy = 3, 
+  extract = 4, 
+  expose = 5 
+};
 
 struct stage
 {
