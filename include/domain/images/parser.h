@@ -6,9 +6,13 @@
 #include <range/v3/view/split.hpp>
 #include <domain/images/payloads.h>
 #include <filesystem>
+#include <algorithm>
 #include <fmt/format.h>
+#include <fmt/color.h>
 #include <optional>
 #include <fstream>
+#include <cctype>
+
 
 
 
@@ -19,6 +23,9 @@ struct description
 {
   std::map<std::string, stage> stages;
   std::map<std::string, std::string> labels;
+  std::map<std::string, std::string> env_vars;
+  std::vector<uint16_t> ports;
+  std::string command;
   std::string entry_point;
 };
 
@@ -27,16 +34,51 @@ inline std::map<std::string, step_type> step_map = {
   {"WORKDIR", step_type::work_dir},
   {"RUN", step_type::run},
   {"COPY", step_type::copy},
-  {"EXTRACT", step_type::extract},
-  {"EXPOSE", step_type::expose}
+  {"EXTRACT", step_type::extract}
   // clang-format on
 };
+
+inline auto add_env_var(const std::string &line, std::map<std::string, std::string> &env_vars) -> void
+{
+  auto parts = line | views::split('=') | to<std::vector<std::string>>();
+  if (parts.size() == 2) 
+  { 
+    auto key = parts.at(0);
+    auto variable = parts.at(1);
+    auto is_space = [](unsigned char c){ return std::isspace(c); };
+    key.erase(std::remove_if(key.begin(), key.end(), is_space));
+    variable.erase(std::remove_if(variable.begin(), variable.end(), is_space));
+    env_vars.try_emplace(key, variable); 
+  }
+}
 
 inline auto add_label(const std::string &line, std::map<std::string, std::string> &labels) -> void
 {
   auto parts = line | views::split('=') | to<std::vector<std::string>>();
-  if (parts.size() == 2) { labels.try_emplace(parts.at(0), parts.at(1)); }
+  if (parts.size() == 2) { 
+    auto key = parts.at(0);
+    auto variable = parts.at(1);
+    auto is_space = [](unsigned char c){ return std::isspace(c); };
+    key.erase(std::remove_if(key.begin(), key.end(), is_space));
+    variable.erase(std::remove_if(variable.begin(), variable.end(), is_space)); 
+    labels.try_emplace(key, variable);
+  }
 }
+
+inline auto add_port(const std::string &line, std::vector<uint16_t> &ports) -> void
+{
+  auto is_space = [](unsigned char c){ return std::isspace(c); };
+  std::string port(line);
+  port.erase(std::remove_if(port.begin(), port.end(), is_space));
+  try {
+    std::size_t pos{};
+    ports.push_back(static_cast<uint16_t>(std::stoi(port, &pos)));
+  } catch(std::invalid_argument const& err) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "err:{}!\n", err.what());
+    fmt::print(fg(fmt::color::white), "\n");
+  }
+}
+
 inline auto add_stage(const std::string &line, description &desc, std::string &current_stage_name) -> void
 {
   auto parts = line | views::split(':') | to<std::vector<std::string>>();
@@ -98,10 +140,14 @@ auto parse_description(fs::path &file_path) -> std::optional<description>
         add_step(line, desc, current_stage, pos->second);
       } else if (mark == "FROM") {
         add_stage(line, desc, current_stage);
+      } else if (mark == "ENV") {
+        add_env_var(line, desc.env_vars);
       } else if (mark == "LABEL") {
         add_label(line, desc.labels);
+      } else if (mark == "EXPOSE") {
+        add_port(line, desc.ports);
       } else if (mark == "CMD") {
-        desc.entry_point = line;
+        desc.command = line;
       } else if (mark == "ENTRYPOINT") {
         desc.entry_point = line;
       }

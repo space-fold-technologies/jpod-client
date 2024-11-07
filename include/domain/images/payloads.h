@@ -48,8 +48,7 @@ enum class step_type : int
   run = 1, 
   work_dir = 2, 
   copy = 3, 
-  extract = 4, 
-  expose = 5 
+  extract = 4
 };
 
 struct stage
@@ -66,11 +65,14 @@ struct build_order
   std::string name;
   std::string tag;
   std::map<std::string, std::string> labels;
+  std::map<std::string, std::string> env_vars;
   std::string current_directory;
   std::vector<stage> stages;
   std::string entry_point;
+  std::string command;
+  std::vector<uint16_t> ports;
 
-  MSGPACK_DEFINE(name, tag, current_directory, stages, entry_point)
+  MSGPACK_DEFINE(name, tag, current_directory, stages, entry_point, command, ports)
 };
 
 inline std::vector<uint8_t> pack_build_order(const build_order &order)
