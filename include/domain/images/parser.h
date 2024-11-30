@@ -1,14 +1,20 @@
 #ifndef __JC_DOMAIN_IMAGES_POD_PARSER__
 #define __JC_DOMAIN_IMAGES_POD_PARSER__
 
+#include <range/v3/range/conversion.hpp>
+#include <range/v3/view/transform.hpp>
+#include <range/v3/view/split.hpp>
 #include <domain/images/payloads.h>
 #include <filesystem>
+#include <algorithm>
 #include <fmt/format.h>
-#include <fstream>
+#include <fmt/color.h>
 #include <optional>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/split.hpp>
-#include <range/v3/view/transform.hpp>
+#include <fstream>
+#include <cctype>
+
+
+
 
 namespace fs = std::filesystem;
 using namespace ranges;
@@ -17,6 +23,9 @@ struct description
 {
   std::map<std::string, stage> stages;
   std::map<std::string, std::string> labels;
+  std::map<std::string, std::string> env_vars;
+  std::vector<uint16_t> ports;
+  std::string command;
   std::string entry_point;
 };
 
@@ -25,15 +34,51 @@ inline std::map<std::string, step_type> step_map = {
   {"WORKDIR", step_type::work_dir},
   {"RUN", step_type::run},
   {"COPY", step_type::copy},
-  {"EXPOSE", step_type::expose}
+  {"EXTRACT", step_type::extract}
   // clang-format on
 };
+
+inline auto add_env_var(const std::string &line, std::map<std::string, std::string> &env_vars) -> void
+{
+  auto parts = line | views::split('=') | to<std::vector<std::string>>();
+  if (parts.size() == 2) 
+  { 
+    auto key = parts.at(0);
+    auto variable = parts.at(1);
+    auto is_space = [](unsigned char c){ return std::isspace(c); };
+    key.erase(std::remove_if(key.begin(), key.end(), is_space));
+    variable.erase(std::remove_if(variable.begin(), variable.end(), is_space));
+    env_vars.try_emplace(key, variable); 
+  }
+}
 
 inline auto add_label(const std::string &line, std::map<std::string, std::string> &labels) -> void
 {
   auto parts = line | views::split('=') | to<std::vector<std::string>>();
-  if (parts.size() == 2) { labels.try_emplace(parts.at(0), parts.at(1)); }
+  if (parts.size() == 2) { 
+    auto key = parts.at(0);
+    auto variable = parts.at(1);
+    auto is_space = [](unsigned char c){ return std::isspace(c); };
+    key.erase(std::remove_if(key.begin(), key.end(), is_space));
+    variable.erase(std::remove_if(variable.begin(), variable.end(), is_space)); 
+    labels.try_emplace(key, variable);
+  }
 }
+
+inline auto add_port(const std::string &line, std::vector<uint16_t> &ports) -> void
+{
+  auto is_space = [](unsigned char c){ return std::isspace(c); };
+  std::string port(line);
+  port.erase(std::remove_if(port.begin(), port.end(), is_space));
+  try {
+    std::size_t pos{};
+    ports.push_back(static_cast<uint16_t>(std::stoi(port, &pos)));
+  } catch(std::invalid_argument const& err) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "err:{}!\n", err.what());
+    fmt::print(fg(fmt::color::white), "\n");
+  }
+}
+
 inline auto add_stage(const std::string &line, description &desc, std::string &current_stage_name) -> void
 {
   auto parts = line | views::split(':') | to<std::vector<std::string>>();
@@ -49,40 +94,60 @@ inline auto add_stage(const std::string &line, description &desc, std::string &c
     current_stage_name = stage_name;
     current_stage.name = stage_name;
     std::string step = fmt::format("{}:{}", parts.at(0), image_tag);
-    current_stage.steps.try_emplace(step, step_type::from);
+    current_stage.steps.push_back({step, step_type::from});
     desc.stages.try_emplace(stage_name, current_stage);
   }
 }
 
-inline auto add_step(const std::string &line, description &desc, std::string &current_stage, step_type type) -> void
+inline auto add_step(const std::string &line, description &desc, std::string &current_stage_name, step_type type) -> void
 {
-  if (auto pos = desc.stages.find(current_stage); pos != desc.stages.end()) {
-    pos->second.steps.try_emplace(line, type);
+  if(current_stage_name.empty())
+  {
+    current_stage_name = std::string("0");
+    stage current_stage{};
+    current_stage.name = current_stage_name;
+    desc.stages.try_emplace(current_stage_name, current_stage);
+  }
+  if (auto pos = desc.stages.find(current_stage_name); pos != desc.stages.end()) {
+    pos->second.steps.push_back({line, type});
   }
 }
 
 auto parse_description(fs::path &file_path) -> std::optional<description>
 {
   std::ifstream file(file_path);
-  if (file.is_open()) { return std::nullopt; }
+  if (!file.is_open() || file.bad()) 
+  { 
+    return std::nullopt; 
+  }
   description desc{ {}, {} };
   std::string current_stage;
   std::string line;
-  while (std::getline(file, line)) {}
+  while (std::getline(file, line))
   {
     auto parts = line | views::split(' ') | to<std::vector<std::string>>();
     if (parts.size() > 0) {
       auto mark = parts.at(0);
-      line.replace(line.find_first_of(mark), 1, "");
-
+      if(step_map.find(mark) == step_map.end())
+      {
+        continue;
+      }
+      // line.replace(line.find_first_of(mark), 1, "");
+      auto elements = std::vector<std::string>(parts.begin() + 1, parts.end());
+      auto delimiter = " ";
+      line = fmt::format("{}", fmt::join(elements, delimiter));
       if (auto pos = step_map.find(mark); pos != step_map.end()) {
         add_step(line, desc, current_stage, pos->second);
       } else if (mark == "FROM") {
         add_stage(line, desc, current_stage);
+      } else if (mark == "ENV") {
+        add_env_var(line, desc.env_vars);
       } else if (mark == "LABEL") {
         add_label(line, desc.labels);
+      } else if (mark == "EXPOSE") {
+        add_port(line, desc.ports);
       } else if (mark == "CMD") {
-        desc.entry_point = line;
+        desc.command = line;
       } else if (mark == "ENTRYPOINT") {
         desc.entry_point = line;
       }
@@ -93,17 +158,20 @@ auto parse_description(fs::path &file_path) -> std::optional<description>
   return std::make_optional(desc);
 }
 
-build_order create_build_order(const description &desc, std::string &name, const fs::path &file_path)
+build_order create_build_order(const description &desc, const std::string &name, const fs::path &file_path)
 {
-  auto parts = name.find(":") != std::string::npos ? (name | views::split(' ') | to<std::vector<std::string>>())
+  auto parts = name.find(":") != std::string::npos ? (name | views::split(':') | to<std::vector<std::string>>())
                                                    : std::vector<std::string>{ name, "latest" };
-
+  
   build_order order{};
   order.name = parts.at(0);
   order.tag = parts.at(1);
   order.labels = desc.labels;
   order.entry_point = desc.entry_point;
-  for (auto &stage : desc.stages) { order.stages.push_back(stage.second); }
+  for (auto &[name, stage] : desc.stages) 
+  { 
+    order.stages.push_back(stage); 
+  }
   order.current_directory = file_path.generic_string();
   return order;
 }

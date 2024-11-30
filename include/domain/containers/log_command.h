@@ -13,9 +13,9 @@ using namespace core::operations;
 
 namespace domain::containers {
 class terminal;
-class log_command
-  : public core::commands::command
-  , public core::operations::interactive_session_listener
+class log_command: 
+public core::commands::command,
+public core::operations::interactive_session_listener
 {
 public:
   log_command();

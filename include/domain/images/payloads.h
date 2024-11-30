@@ -42,12 +42,19 @@ inline summary unpack_summary(const std::vector<uint8_t> &content)
   return result.get().as<summary>();
 }
 
-enum class step_type : int { from = 0, run = 1, work_dir = 2, copy = 3, expose = 4 };
+enum class step_type : int 
+{ 
+  from = 0, 
+  run = 1, 
+  work_dir = 2, 
+  copy = 3, 
+  extract = 4
+};
 
 struct stage
 {
   std::string name;
-  std::map<std::string, step_type> steps;
+  std::vector<std::pair<std::string, step_type>> steps;
   MSGPACK_DEFINE(name, steps)
 
   bool operator==(const stage rhs) { return (this->name == rhs.name && this->steps == rhs.steps); }
@@ -58,11 +65,14 @@ struct build_order
   std::string name;
   std::string tag;
   std::map<std::string, std::string> labels;
+  std::map<std::string, std::string> env_vars;
   std::string current_directory;
   std::vector<stage> stages;
   std::string entry_point;
+  std::string command;
+  std::vector<uint16_t> ports;
 
-  MSGPACK_DEFINE(name, tag, current_directory, stages, entry_point)
+  MSGPACK_DEFINE(name, tag, current_directory, stages, entry_point, command, ports)
 };
 
 inline std::vector<uint8_t> pack_build_order(const build_order &order)
